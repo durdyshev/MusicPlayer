@@ -1,0 +1,43 @@
+package com.justme.musicplayer
+
+import android.os.Bundle
+import androidx.fragment.app.Fragment
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.justme.musicplayer.databinding.FragmentFolderBinding
+import com.justme.musicplayer.databinding.FragmentTrackBinding
+
+class FolderFragment(mainActivity: MainActivity) : Fragment() {
+    private lateinit var binding: FragmentFolderBinding
+    private lateinit var view: View
+    private lateinit var folderRecyclerViewAdapter:FolderRecyclerViewAdapter
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+    }
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        // Inflate the layout for this fragment
+        binding = FragmentFolderBinding.inflate(layoutInflater, container, false)
+        view = binding.root
+        initRecyclerView()
+        return view
+    }
+
+    private fun initRecyclerView() {
+        folderRecyclerViewAdapter =
+            FolderRecyclerViewAdapter(requireContext(), MainActivity.directoryList)
+        binding.fragmentFolderRecyclerview.layoutManager = LinearLayoutManager(
+            requireContext(),
+            LinearLayoutManager.VERTICAL, false
+        )
+        binding.fragmentFolderRecyclerview.adapter = folderRecyclerViewAdapter
+    }
+
+
+}
