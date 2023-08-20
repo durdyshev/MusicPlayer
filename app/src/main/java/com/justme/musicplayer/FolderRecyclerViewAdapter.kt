@@ -10,6 +10,11 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 class FolderRecyclerViewAdapter(
@@ -55,20 +60,25 @@ class FolderRecyclerViewAdapter(
                 tv2.text = folder.fullFolderName
             }
 
-            val image = imgSource(folder.data)
-            if (image != null) {
-                Glide.with(itemView).asBitmap() //2
-                    .load(image) //3
-                    .centerCrop() //4
-                    .placeholder(R.drawable.track_drawable) //5
-                    .into(imageView) //8
-            } else {
-                Glide.with(itemView).asBitmap() //2
-                    .load(R.drawable.baseline_music_note_24) //3
-                    .centerCrop() //4
-                    .placeholder(R.drawable.track_drawable) //5
-                    .into(imageView) //8
+            CoroutineScope(IO).launch {
+                val image =  imgSource(folder.data)
+                withContext(Main){
+                    if (image != null) {
+                        Glide.with(itemView).asBitmap() //2
+                            .load(image) //3
+                            .centerCrop() //4
+                            .placeholder(R.drawable.track_drawable) //5
+                            .into(imageView) //8
+                    } else {
+                        Glide.with(itemView).asBitmap() //2
+                            .load(R.drawable.baseline_music_note_24) //3
+                            .centerCrop() //4
+                            .placeholder(R.drawable.track_drawable) //5
+                            .into(imageView) //8
+                    }
+                }
             }
+
         }
 
     }

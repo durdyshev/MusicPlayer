@@ -16,7 +16,6 @@ import com.justme.musicplayer.databinding.FragmentTrackBinding
 class TrackFragment(private val mainActivity: MainActivity) : Fragment() {
     private lateinit var binding: FragmentTrackBinding
     private lateinit var view: View
-
     private lateinit var trackRecyclerViewAdapter: TrackRecyclerViewAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,6 +50,7 @@ class TrackFragment(private val mainActivity: MainActivity) : Fragment() {
         trackRecyclerViewAdapter.setOnClickItem { it, pos ->
             MainActivity.audio.value = it
             MainActivity.position.value = pos
+
             if (isMyServiceRunning(MusicPlayerService::class.java)) {
                 val serviceIntent = Intent(requireContext(), MusicPlayerService::class.java)
                 serviceIntent.action = Constants.ACTION.STOP_MUSIC

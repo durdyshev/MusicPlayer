@@ -151,19 +151,6 @@ class MainActivity : AppCompatActivity(), ActionPlaying {
         })
     }
 
-    fun playContentUri(uri: Uri) {
-        val mMediaPlayer = MediaPlayer().apply {
-            setDataSource(application, uri)
-            setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build()
-            )
-            prepare()
-            start()
-        }
-    }
 
     fun setAudioFileDetails(audio: Audio) {
         val image = imgSource(audio.data)
@@ -232,6 +219,7 @@ class MainActivity : AppCompatActivity(), ActionPlaying {
     }
 
     private fun getAllMusic(): ArrayList<Audio> {
+
         val audioList1 = ArrayList<Audio>()
 
         val collection =
