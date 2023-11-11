@@ -1,4 +1,4 @@
-package com.justme.musicplayer.utils
+package com.justme.musicplayer
 
 interface ActionPlaying {
     fun nextClicked()

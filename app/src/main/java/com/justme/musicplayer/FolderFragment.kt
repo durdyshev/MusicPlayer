@@ -1,4 +1,4 @@
-package com.justme.musicplayer.ui
+package com.justme.musicplayer
 
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -6,13 +6,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.justme.musicplayer.adapter.FolderRecyclerViewAdapter
 import com.justme.musicplayer.databinding.FragmentFolderBinding
+import com.justme.musicplayer.databinding.FragmentTrackBinding
 
 class FolderFragment(mainActivity: MainActivity) : Fragment() {
     private lateinit var binding: FragmentFolderBinding
     private lateinit var view: View
-    private lateinit var folderRecyclerViewAdapter: FolderRecyclerViewAdapter
+    private lateinit var folderRecyclerViewAdapter:FolderRecyclerViewAdapter
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

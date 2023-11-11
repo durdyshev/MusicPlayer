@@ -1,4 +1,4 @@
-package com.justme.musicplayer.model
+package com.justme.musicplayer
 
 import android.net.Uri
 

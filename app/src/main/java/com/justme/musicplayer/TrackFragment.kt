@@ -1,4 +1,4 @@
-package com.justme.musicplayer.ui
+package com.justme.musicplayer
 
 import android.app.ActivityManager
 import android.content.Intent
@@ -10,10 +10,7 @@ import android.view.ViewGroup
 import androidx.core.content.getSystemService
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.justme.musicplayer.adapter.TrackRecyclerViewAdapter
 import com.justme.musicplayer.databinding.FragmentTrackBinding
-import com.justme.musicplayer.service.MusicPlayerService
-import com.justme.musicplayer.utils.Constants
 
 
 class TrackFragment(private val mainActivity: MainActivity) : Fragment() {
