@@ -1,4 +1,4 @@
-package com.justme.musicplayer
+package com.justme.musicplayer.service
 
 
 import android.Manifest
@@ -12,13 +12,17 @@ import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
-import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.justme.musicplayer.receiver.NotificationReceiver
+import com.justme.musicplayer.R
+import com.justme.musicplayer.ui.MainActivity
+import com.justme.musicplayer.utils.ActionPlaying
+import com.justme.musicplayer.utils.Constants
 
 
 class MusicPlayerService : Service() {

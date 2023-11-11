@@ -1,4 +1,4 @@
-package com.justme.musicplayer
+package com.justme.musicplayer.utils
 
 object Constants {
     object ACTION {

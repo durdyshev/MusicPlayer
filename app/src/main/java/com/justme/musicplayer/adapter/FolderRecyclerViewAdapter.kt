@@ -1,5 +1,4 @@
-package com.justme.musicplayer
-
+package com.justme.musicplayer.adapter
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -11,6 +10,8 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.justme.musicplayer.R
+import com.justme.musicplayer.model.Bucket
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
@@ -18,11 +19,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 
-class TrackRecyclerViewAdapter(
+class FolderRecyclerViewAdapter(
     val context: Context,
-    private var accountDataArrayList: ArrayList<Audio>,
-) : RecyclerView.Adapter<TrackRecyclerViewAdapter.ViewHolder>() {
-    private var setOnClickItem: ((Audio, Int) -> Unit)? = null
+    private var folderArrayList: ArrayList<Bucket>,
+) : RecyclerView.Adapter<FolderRecyclerViewAdapter.ViewHolder>() {
+    private var setOnClickItem: ((Bucket, Int) -> Unit)? = null
 
 
     override fun onCreateViewHolder(
@@ -37,26 +38,33 @@ class TrackRecyclerViewAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bindView(accountDataArrayList[position])
+        holder.bindView(folderArrayList[position])
         holder.itemView.setOnClickListener {
-            setOnClickItem?.invoke(accountDataArrayList[position], position)
+            setOnClickItem?.invoke(folderArrayList[position], position)
         }
 
     }
 
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tv: TextView = itemView.findViewById(R.id.track_recycler_item_text)
+        private val tv2: TextView = itemView.findViewById(R.id.track_recycler_item_text2)
         private val imageView: ImageView = itemView.findViewById(R.id.track_recycler_item_imageview)
 
-        fun bindView(audio: Audio) {
-            if (audio.name.length > 20) {
-                tv.text = audio.name.substring(0, 21) + "..."
+        fun bindView(folder: Bucket) {
+            if (folder.folderName.length > 20) {
+                tv.text = folder.folderName.substring(0, 21) + "..."
             } else {
-                tv.text = audio.name
+                tv.text = folder.folderName
             }
+            if (folder.fullFolderName.length > 20) {
+                tv2.text = folder.fullFolderName.substring(0, 21) + "..."
+            } else {
+                tv2.text = folder.fullFolderName
+            }
+
             CoroutineScope(IO).launch {
-                val image = imgSource(audio.data)
-                withContext(Main) {
+                val image =  imgSource(folder.data)
+                withContext(Main){
                     if (image != null) {
                         Glide.with(itemView).asBitmap() //2
                             .load(image) //3
@@ -78,11 +86,17 @@ class TrackRecyclerViewAdapter(
     }
 
     override fun getItemCount(): Int {
-        return accountDataArrayList.size
+        return folderArrayList.size
     }
 
-    fun setOnClickItem(callback: (Audio, Int) -> Unit) {
+    fun setOnClickItem(callback: (Bucket, Int) -> Unit) {
         this.setOnClickItem = callback
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    fun updateList(tempStaffList: ArrayList<Bucket>) {
+        this.folderArrayList = tempStaffList
+        notifyDataSetChanged()
     }
 
     private fun imgSource(path: String): ByteArray? {

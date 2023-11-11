@@ -1,13 +1,15 @@
-package com.justme.musicplayer
+package com.justme.musicplayer.receiver
 
 import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import android.widget.Toast
 import androidx.core.content.getSystemService
-import com.justme.musicplayer.MainActivity.Companion.audioList
+import com.justme.musicplayer.service.MusicPlayerService
+import com.justme.musicplayer.ui.MainActivity
+import com.justme.musicplayer.ui.MainActivity.Companion.audioList
+import com.justme.musicplayer.utils.Constants
 
 class NotificationReceiver : BroadcastReceiver() {
     private lateinit var context: Context
