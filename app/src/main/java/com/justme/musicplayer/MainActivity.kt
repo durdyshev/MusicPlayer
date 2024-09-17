@@ -11,6 +11,10 @@ import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 import com.bumptech.glide.Glide
 import com.google.android.material.tabs.TabLayoutMediator
 import com.justme.musicplayer.databinding.ActivityMainBinding
+import com.justme.musicplayer.use_cases.DecreaseAudioPosition
+import com.justme.musicplayer.use_cases.DecreaseAudioPosition.decreaseAudioPosition
+import com.justme.musicplayer.use_cases.IncreaseAudioPosition
+import com.justme.musicplayer.use_cases.IncreaseAudioPosition.increaseAudioPosition
 
 
 class MainActivity : AppCompatActivity() {
@@ -123,18 +127,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun nextClicked() {
-        mainViewModel.increaseAudioPosition()
+        increaseAudioPosition()
         prevOrNextClick()
     }
 
     private fun prevClicked() {
-        mainViewModel.decreaseAudioPosition()
+        decreaseAudioPosition()
         prevOrNextClick()
     }
 
     private fun playClicked() {
         if (MusicPlayerService.isServiceRunning) {
-            if (isPlaying.value==true) {
+            if (isPlaying.value == true) {
                 isPlaying.value = false
                 serviceIntent.action = Constants.ACTION.PAUSE_MUSIC
                 startService(serviceIntent)

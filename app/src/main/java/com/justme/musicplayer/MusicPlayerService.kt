@@ -20,6 +20,8 @@ class MusicPlayerService : Service() {
 
     private lateinit var builder: NotificationCompat.Builder
     private lateinit var mediaSession: MediaSessionCompat
+    private var playbackPosition: Int = 0 // Track the last known position
+    private var isMediaPlayerInitialized: Boolean = false // Track if mediaPlayer is initialized
 
     companion object {
         var isServiceRunning = false // Tracks if the service is running
@@ -49,12 +51,11 @@ class MusicPlayerService : Service() {
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        // Service action handling logic
         when (intent.action) {
             Constants.ACTION.START_FOREGROUND_ACTION -> {
                 startForeground(NOTIFICATION_ID, createNotification())
                 MainActivity.isPlaying.value = true
-                playMusic()
+                playMusicFirst()
             }
 
             Constants.ACTION.STOP_FOREGROUND_ACTION -> {
@@ -65,7 +66,11 @@ class MusicPlayerService : Service() {
 
             Constants.ACTION.PLAY_MUSIC -> {
                 MainActivity.isPlaying.value = true
-                playMusic()
+                if (isMediaPlayerInitialized) {
+                    continuePlay() // Resume from last paused position
+                } else {
+                    playMusicFirst() // Initialize and start music
+                }
             }
 
             Constants.ACTION.STOP_MUSIC -> {
@@ -75,17 +80,21 @@ class MusicPlayerService : Service() {
 
             Constants.ACTION.PAUSE_MUSIC -> {
                 MainActivity.isPlaying.value = false
-                pauseMusic()
-            }
-
-            Constants.ACTION.START_MUSIC -> {
-                startForeground(NOTIFICATION_ID, createNotification())
+                pauseMusic() // Pauses and saves the playback position
             }
         }
         return START_NOT_STICKY
     }
 
-    override fun onBind(intent: Intent): IBinder? {
+    private fun continuePlay() {
+        if (isMediaPlayerInitialized && !mediaPlayer.isPlaying) {
+            mediaPlayer.seekTo(playbackPosition) // Resume from saved position
+            mediaPlayer.start() // Start or resume playback
+            updateNotification()
+        }
+    }
+
+    override fun onBind(intent: Intent): IBinder {
         return MyBinder()
     }
 
@@ -93,7 +102,6 @@ class MusicPlayerService : Service() {
         val service: MusicPlayerService
             get() = MusicPlayerService()
     }
-
 
     private fun createNotification(): Notification {
         mediaSession = MediaSessionCompat(this, "PlayerAudio")
@@ -137,32 +145,39 @@ class MusicPlayerService : Service() {
         return builder.build()
     }
 
-    private fun playMusic() {
-        mediaPlayer = MediaPlayer().apply {
-            setDataSource(application, MainActivity.audio.value!!.uri)
-            setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build()
-            )
-            prepare()
-            start()
+    private fun playMusicFirst() {
+        try {
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(application, MainActivity.audio.value!!.uri)
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                prepare()
+                start()
+                isMediaPlayerInitialized = true // Mark mediaPlayer as initialized
+            }
+            updateNotification()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        updateNotification()
     }
 
     private fun pauseMusic() {
-        if (mediaPlayer.isPlaying) {
-            mediaPlayer.pause()
+        if (isMediaPlayerInitialized && mediaPlayer.isPlaying) {
+            playbackPosition = mediaPlayer.currentPosition // Save the current position
+            mediaPlayer.pause() // Pauses the media and remembers the current position
             updateNotification()
         }
     }
 
     private fun stopMusic() {
-        if (mediaPlayer.isPlaying) {
+        if (isMediaPlayerInitialized && mediaPlayer.isPlaying) {
             mediaPlayer.stop()
             mediaPlayer.release()
+            isMediaPlayerInitialized = false // Mark mediaPlayer as uninitialized
             updateNotification()
         }
     }
@@ -210,13 +225,6 @@ class MusicPlayerService : Service() {
                     Manifest.permission.POST_NOTIFICATIONS
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
-                // TODO: Consider calling
-                //    ActivityCompat#requestPermissions
-                // here to request the missing permissions, and then overriding
-                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                //                                          int[] grantResults)
-                // to handle the case where the user grants the permission. See the documentation
-                // for ActivityCompat#requestPermissions for more details.
                 return
             }
             notify(NOTIFICATION_ID, builder.build())

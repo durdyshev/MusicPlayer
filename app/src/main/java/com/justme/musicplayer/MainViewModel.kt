@@ -19,8 +19,7 @@ import java.util.concurrent.TimeUnit
 class MainViewModel(private val application: Application) : AndroidViewModel(application) {
     private val directories: ArrayList<String> = ArrayList()
     private val directories1: ArrayList<Bucket> = ArrayList()
-    private var sharedMusicPref = application.getSharedPreferences("Music", MODE_PRIVATE)
-    private var prefEditor = sharedMusicPref.edit()
+    private val musicSharedPref = MusicSharedPref(application.applicationContext)
 
     fun getAllMusic(): ArrayList<Audio> {
 
@@ -117,23 +116,10 @@ class MainViewModel(private val application: Application) : AndroidViewModel(app
         return pic
     }
 
-    fun saveShared() {
-        prefEditor.putInt("musicPos", position.value!!)
-        prefEditor.putString("musicName", audio.value!!.name)
-        prefEditor.apply()
-    }
-
-    private fun getMusicId(): Int {
-        return sharedMusicPref.getInt("musicPos", -1)
-    }
-
-    private fun getMusicName(): String? {
-        return sharedMusicPref.getString("musicName", null)
-    }
 
     fun checkSharedPrefAndSetMusicValue() {
-        val musicPos = getMusicId()
-        val musicName = getMusicName()
+        val musicPos = musicSharedPref.getMusicId()
+        val musicName = musicSharedPref.getMusicName()
         if (musicPos == -1) {
             position.value = 0
             audio.value = audioList[0]
@@ -148,26 +134,7 @@ class MainViewModel(private val application: Application) : AndroidViewModel(app
         }
     }
 
-    fun decreaseAudioPosition() {
-        if (audioList.isEmpty()) return
-        if (position.value == 0) {
-            position.value = audioList.size - 1
-
-            audio.value = audioList[position.value!!]
-        } else {
-            position.value = position.value!! - 1
-            audio.value = audioList[position.value!!]
-        }
-    }
-
-    fun increaseAudioPosition() {
-        if (audioList.isEmpty()) return
-        if (position.value == audioList.size - 1) {
-            position.value = 0
-            audio.value = audioList[position.value!!]
-        } else {
-            position.value = position.value!! + 1
-            audio.value = audioList[position.value!!]
-        }
+    fun saveShared() {
+        musicSharedPref.saveShared()
     }
 }
