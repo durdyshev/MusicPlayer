@@ -1,8 +1,6 @@
 package com.justme.musicplayer
 
-
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
@@ -10,9 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.media.AudioAttributes
-import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
-import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
@@ -20,96 +16,109 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 
-
 class MusicPlayerService : Service() {
 
     private lateinit var builder: NotificationCompat.Builder
     private lateinit var mediaSession: MediaSessionCompat
-    private lateinit var mediaPlayer: MediaPlayer
-    private lateinit var actionPlaying: ActionPlaying
-    override fun onCreate() {
-        super.onCreate()
 
+    companion object {
+        var isServiceRunning = false // Tracks if the service is running
+        private const val NOTIFICATION_ID = 1
+        private lateinit var mediaPlayer: MediaPlayer
 
+        fun isMusicPlaying(): Boolean {
+            return if (::mediaPlayer.isInitialized) {
+                mediaPlayer.isPlaying
+            } else {
+                false
+            }
+        }
     }
 
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        if (intent.action == Constants.ACTION.START_FOREGROUND_ACTION) {
-            startForeground(NOTIFICATION_ID, createNotification())
-            MainActivity.isPlaying.value = true
-            playMusic()
-        } else if (intent.action == Constants.ACTION.STOP_FOREGROUND_ACTION) {
-            //stopForeground(true)
-            MainActivity.isPlaying.value = false
-
-            stopMusic()
-            stopSelf()
-        } else if (intent.action == Constants.ACTION.PLAY_MUSIC) {
-            MainActivity.isPlaying.value = true
-            playMusic()
-
-        } else if (intent.action == Constants.ACTION.STOP_MUSIC) {
-            MainActivity.isPlaying.value = false
-            stopMusic()
-        } else if (intent.action == Constants.ACTION.PAUSE_MUSIC) {
-            MainActivity.isPlaying.value = false
-            pauseMusic()
-        } else if (intent.action == Constants.ACTION.PAUSE_MUSIC) {
-            MainActivity.isPlaying.value = true
-            continuePlay()
-        } else if (intent.action == Constants.ACTION.START_MUSIC) {
-            startForeground(NOTIFICATION_ID, createNotification())
-        }
-        return START_NOT_STICKY
+    override fun onCreate() {
+        super.onCreate()
+        isServiceRunning = true // Set when service starts
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        if (MainActivity.isPlaying.value!!) {
+        isServiceRunning = false // Set when service stops
+        if (MainActivity.isPlaying.value == true) {
             stopMusic()
         }
     }
 
+    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        // Service action handling logic
+        when (intent.action) {
+            Constants.ACTION.START_FOREGROUND_ACTION -> {
+                startForeground(NOTIFICATION_ID, createNotification())
+                MainActivity.isPlaying.value = true
+                playMusic()
+            }
+
+            Constants.ACTION.STOP_FOREGROUND_ACTION -> {
+                MainActivity.isPlaying.value = false
+                stopMusic()
+                stopSelf()
+            }
+
+            Constants.ACTION.PLAY_MUSIC -> {
+                MainActivity.isPlaying.value = true
+                playMusic()
+            }
+
+            Constants.ACTION.STOP_MUSIC -> {
+                MainActivity.isPlaying.value = false
+                stopMusic()
+            }
+
+            Constants.ACTION.PAUSE_MUSIC -> {
+                MainActivity.isPlaying.value = false
+                pauseMusic()
+            }
+
+            Constants.ACTION.START_MUSIC -> {
+                startForeground(NOTIFICATION_ID, createNotification())
+            }
+        }
+        return START_NOT_STICKY
+    }
+
     override fun onBind(intent: Intent): IBinder? {
-        return null
+        return MyBinder()
     }
 
     class MyBinder : Binder() {
         val service: MusicPlayerService
             get() = MusicPlayerService()
     }
-    @SuppressLint("LaunchActivityFromNotification")
+
+
     private fun createNotification(): Notification {
         mediaSession = MediaSessionCompat(this, "PlayerAudio")
 
-        val prevIntent= Intent(this, NotificationReceiver::class.java)
-        prevIntent.action="com.example.musicplayer.action.PREV_MUSIC"
-        val playIntent= Intent(this, NotificationReceiver::class.java)
+        val prevIntent = Intent(this, NotificationReceiver::class.java)
+        prevIntent.action = "com.example.musicplayer.action.PREV_MUSIC"
+        val playIntent = Intent(this, NotificationReceiver::class.java)
         playIntent.action = "com.example.musicplayer.action.PAUSE_MUSIC"
         val nextIntent = Intent(this, NotificationReceiver::class.java)
         nextIntent.action = "com.example.musicplayer.action.NEXT_MUSIC"
 
         val pendingPrevIntent = PendingIntent.getBroadcast(
-            applicationContext,
-            0,
-            prevIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT // setting the mutability flag
+            applicationContext, 0, prevIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val pendingPlayIntent = PendingIntent.getBroadcast(
-            applicationContext,
-            0,
-            playIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT // setting the mutability flag
+            applicationContext, 0, playIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val pendingNextIntent = PendingIntent.getBroadcast(
-            applicationContext,
-            0,
-            nextIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT // setting the mutability flag
+            applicationContext, 0, nextIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-       builder = NotificationCompat.Builder(this, Constants.NOTIFICATION_CHANNEL_ID)
-           // .setSmallIcon(trackFilesArrayList[position].thumbnail)
+        builder = NotificationCompat.Builder(this, Constants.NOTIFICATION_CHANNEL_ID)
             .setLargeIcon(BitmapFactory.decodeFile(MainActivity.audio.value!!.data))
             .setContentTitle(MainActivity.audio.value!!.name)
             .setContentText(MainActivity.audio.value!!.name)
@@ -117,7 +126,6 @@ class MusicPlayerService : Service() {
             .addAction(R.drawable.baseline_play_arrow_24, "Play", pendingPlayIntent)
             .addAction(R.drawable.baseline_skip_next_24, "Next", pendingNextIntent)
             .setSmallIcon(R.drawable.baseline_music_note_24)
-
             .setStyle(
                 androidx.media.app.NotificationCompat.MediaStyle()
                     .setMediaSession(mediaSession.sessionToken)
@@ -141,17 +149,14 @@ class MusicPlayerService : Service() {
             prepare()
             start()
         }
-        if (!mediaPlayer.isPlaying) {
-            mediaPlayer.start()
-        }
         updateNotification()
     }
 
-    private fun continuePlay() {
-        if (!mediaPlayer.isPlaying) {
-            mediaPlayer.start()
+    private fun pauseMusic() {
+        if (mediaPlayer.isPlaying) {
+            mediaPlayer.pause()
+            updateNotification()
         }
-        updateNotification()
     }
 
     private fun stopMusic() {
@@ -162,28 +167,13 @@ class MusicPlayerService : Service() {
         }
     }
 
-    private fun pauseMusic() {
-        if (mediaPlayer.isPlaying) {
-            mediaPlayer.pause()
-            updateNotification()
-        }
-    }
-    fun setCallback(actionPlaying: ActionPlaying){
-        this.actionPlaying=actionPlaying
-    }
-    private fun imgSource(path: String): ByteArray? {
-        val retriever = MediaMetadataRetriever()
-        retriever.setDataSource(path)
-        val pic = retriever.embeddedPicture
-        retriever.release()
-        return pic
-    }
     private fun updateNotification() {
-        val playText=if (MainActivity.isPlaying.value!!) "Pause" else "Play"
-        val playPauseResource = if (MainActivity.isPlaying.value!!) R.drawable.baseline_pause_24 else R.drawable.baseline_play_arrow_24
-        val prevIntent= Intent(this, NotificationReceiver::class.java)
-        prevIntent.action="com.example.musicplayer.action.PREV_MUSIC"
-        val playIntent= Intent(this, NotificationReceiver::class.java)
+        val playText = if (MainActivity.isPlaying.value!!) "Pause" else "Play"
+        val playPauseResource =
+            if (MainActivity.isPlaying.value!!) R.drawable.baseline_pause_24 else R.drawable.baseline_play_arrow_24
+        val prevIntent = Intent(this, NotificationReceiver::class.java)
+        prevIntent.action = "com.example.musicplayer.action.PREV_MUSIC"
+        val playIntent = Intent(this, NotificationReceiver::class.java)
         playIntent.action = "com.example.musicplayer.action.PAUSE_MUSIC"
         val nextIntent = Intent(this, NotificationReceiver::class.java)
         nextIntent.action = "com.example.musicplayer.action.NEXT_MUSIC"
@@ -231,9 +221,5 @@ class MusicPlayerService : Service() {
             }
             notify(NOTIFICATION_ID, builder.build())
         }
-    }
-
-    companion object {
-        private const val NOTIFICATION_ID = 1
     }
 }
