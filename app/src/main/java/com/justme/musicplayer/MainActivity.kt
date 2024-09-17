@@ -93,12 +93,9 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun setAudioFileDetails(audio: Audio, pauseIcon: Boolean? = false) {
+    private fun setAudioFileDetails(audio: Audio) {
         val image = mainViewModel.imgSource(audio.data)
         binding.trackRecyclerItemText.text = audio.name
-        if (pauseIcon == true) {
-            binding.playImg.setImageResource(R.drawable.baseline_pause_24)
-        }
 
         if (image != null) {
             Glide.with(binding.trackRecyclerItemImageview).asBitmap() //2
