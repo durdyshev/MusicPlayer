@@ -19,52 +19,17 @@ class NotificationReceiver : BroadcastReceiver() {
         if (p1?.action != null) {
             when (p1.action) {
                 "com.example.musicplayer.action.PREV_MUSIC" -> {
-                    decreaseAudioPosition()
-                    prevOrNextClick()
+                    MainActivity.buttonClick.postValue(1)
                 }
 
                 "com.example.musicplayer.action.PAUSE_MUSIC" -> {
-                    if (MusicPlayerService.isServiceRunning) {
-                        if (isPlaying.value == true) {
-                            isPlaying.value = false
-                            intent.action = Constants.ACTION.PAUSE_MUSIC
-                            context.startService(intent)
-                        } else {
-                            isPlaying.value = true
-                            intent.action = Constants.ACTION.PLAY_MUSIC
-                            context.startService(intent)
-                        }
-                    } else {
-                        isPlaying.value = true
-                        intent.action = Constants.ACTION.START_FOREGROUND_ACTION
-                        context.startService(intent)
-
-                    }
+                    MainActivity.buttonClick.postValue(2)
                 }
 
                 "com.example.musicplayer.action.NEXT_MUSIC" -> {
-                    increaseAudioPosition()
-                    prevOrNextClick()
+                  MainActivity.buttonClick.postValue(3)
                 }
             }
         }
-    }
-
-    private fun prevOrNextClick() {
-        if (MusicPlayerService.isServiceRunning) {
-            if (isPlaying.value == true) {
-                isPlaying.value = false
-                intent.action = Constants.ACTION.STOP_MUSIC
-                context.startService(intent)
-            }
-            isPlaying.value = true
-            intent.action = Constants.ACTION.PLAY_MUSIC
-            context.startService(intent)
-        } else {
-            isPlaying.value = true
-            intent.action = Constants.ACTION.START_FOREGROUND_ACTION
-            context.startService(intent)
-        }
-        musicSharedPref.saveShared()
     }
 }

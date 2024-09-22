@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Binder
 import android.os.IBinder
@@ -15,6 +16,7 @@ import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.media.session.MediaButtonReceiver
 
 class MusicPlayerService : Service() {
 
@@ -29,12 +31,13 @@ class MusicPlayerService : Service() {
         lateinit var mediaPlayer: MediaPlayer
 
         fun isMusicPlaying(): Boolean {
-            return if (::mediaPlayer.isInitialized) {
+            return if (isInit()) {
                 mediaPlayer.isPlaying
             } else {
                 false
             }
         }
+
         fun isInit(): Boolean {
             return ::mediaPlayer.isInitialized
         }
@@ -55,6 +58,11 @@ class MusicPlayerService : Service() {
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         when (intent.action) {
+            Constants.ACTION.INIT_MUSIC -> {
+                startForeground(NOTIFICATION_ID, createNotification())
+                initMusic()
+            }
+
             Constants.ACTION.START_FOREGROUND_ACTION -> {
                 startForeground(NOTIFICATION_ID, createNotification())
                 MainActivity.isPlaying.value = true
@@ -68,11 +76,12 @@ class MusicPlayerService : Service() {
             }
 
             Constants.ACTION.PLAY_MUSIC -> {
-                MainActivity.isPlaying.value = true
-                if (isMediaPlayerInitialized) {
-                    continuePlay() // Resume from last paused position
+                if (mediaPlayer.isPlaying) {
+                    MainActivity.isPlaying.value = false
+                    pauseMusic() // Pauses and saves the playback position
                 } else {
-                    playMusicFirst() // Initialize and start music
+                    MainActivity.isPlaying.value = true
+                    continuePlay()
                 }
             }
 
@@ -81,12 +90,54 @@ class MusicPlayerService : Service() {
                 stopMusic()
             }
 
+            Constants.ACTION.CHANGE_MUSIC -> {
+                MainActivity.isPlaying.value = true
+                changeMusic()
+            }
+
             Constants.ACTION.PAUSE_MUSIC -> {
                 MainActivity.isPlaying.value = false
                 pauseMusic() // Pauses and saves the playback position
             }
         }
         return START_NOT_STICKY
+    }
+
+    private fun changeMusic() {
+        if (mediaPlayer.isPlaying) {
+            mediaPlayer.stop()
+        }
+        mediaPlayer.reset()
+        mediaPlayer.setDataSource(application, MainActivity.audio.value!!.uri)
+        mediaPlayer.prepare()
+        mediaPlayer.start()
+        updateNotification()
+    }
+
+    private fun initMusic() {
+        try {
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(application, MainActivity.audio.value!!.uri)
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                prepare()
+                isMediaPlayerInitialized = true // Mark mediaPlayer as initialized
+                setOnPreparedListener {
+                    MainActivity.initSeekValue.postValue(true)
+                }
+                setOnCompletionListener {
+                    MainActivity.buttonClick.postValue(3)
+                }
+                requestAudioFocus()
+            }
+            updateNotification()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun continuePlay() {
@@ -108,7 +159,38 @@ class MusicPlayerService : Service() {
 
     private fun createNotification(): Notification {
         mediaSession = MediaSessionCompat(this, "PlayerAudio")
+        mediaSession.setFlags(
+            MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
+                    MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
+        )
+        mediaSession.setCallback(object : MediaSessionCompat.Callback() {
+            override fun onPlay() {
+                super.onPlay()
+                MainActivity.buttonClick.postValue(2)
+                requestAudioFocus()
+            }
 
+            override fun onPause() {
+                super.onPause()
+                MainActivity.buttonClick.postValue(2)
+            }
+
+            override fun onSkipToNext() {
+                super.onSkipToNext()
+                MainActivity.buttonClick.postValue(3)
+            }
+
+            override fun onSkipToPrevious() {
+                super.onSkipToPrevious()
+                MainActivity.buttonClick.postValue(1)
+            }
+
+            override fun onStop() {
+                super.onStop()
+                stopMusic()
+            }
+        })
+        mediaSession.isActive = true
         val prevIntent = Intent(this, NotificationReceiver::class.java)
         prevIntent.action = "com.example.musicplayer.action.PREV_MUSIC"
         val playIntent = Intent(this, NotificationReceiver::class.java)
@@ -160,7 +242,6 @@ class MusicPlayerService : Service() {
                 )
                 prepare()
                 start()
-                isMediaPlayerInitialized = true // Mark mediaPlayer as initialized
             }
             updateNotification()
         } catch (e: Exception) {
@@ -233,4 +314,27 @@ class MusicPlayerService : Service() {
             notify(NOTIFICATION_ID, builder.build())
         }
     }
+
+    private fun requestAudioFocus() {
+        val audioManager = getSystemService(AudioManager::class.java)
+        val result = audioManager.requestAudioFocus(
+            { focusChange ->
+                when (focusChange) {
+                    AudioManager.AUDIOFOCUS_GAIN -> {
+                        if (mediaPlayer == null) initMusic()
+                        else if (!mediaPlayer.isPlaying) mediaPlayer.start()
+                    }
+
+                    AudioManager.AUDIOFOCUS_LOSS -> stopMusic()
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> pauseMusic()
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                        if (mediaPlayer.isPlaying) mediaPlayer.setVolume(0.1f, 0.1f)
+                    }
+                }
+            },
+            AudioManager.STREAM_MUSIC,
+            AudioManager.AUDIOFOCUS_GAIN
+        )
+    }
+
 }

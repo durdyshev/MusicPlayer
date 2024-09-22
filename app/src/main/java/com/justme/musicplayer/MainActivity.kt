@@ -36,6 +36,9 @@ class MainActivity : AppCompatActivity() {
         var position = MutableLiveData<Int>()
         var isPlaying = MutableLiveData<Boolean>()
         lateinit var audioList: ArrayList<Audio>
+        var initSeekValue = MutableLiveData<Boolean>()
+        var buttonClick = MutableLiveData<Int>()
+
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,41 +49,8 @@ class MainActivity : AppCompatActivity() {
         initTabLayout()
         initThis()
         initClickListeners()
-        initSeekListener()
     }
 
-    private fun initSeekListener() {
-        if (MusicPlayerService.isInit()) {
-            binding.seekbar.max = mediaPlayer.duration
-        }
-        binding.seekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    mediaPlayer.seekTo(progress)
-                }
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                mediaPlayer.pause()
-            }
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                mediaPlayer.start()
-            }
-        })
-    }
-
-    private fun updateSeekBar() {
-        binding.seekbar.max = mediaPlayer.duration
-        binding.seekbar.setProgress(mediaPlayer.currentPosition, true)
-        if (mediaPlayer.isPlaying) {
-            handler.postDelayed({
-                updateSeekBar()
-                binding.currentTimeText.text = mainViewModel.formatTime(mediaPlayer.currentPosition)
-                binding.endTimeText.text = mainViewModel.formatTime(mediaPlayer.duration)
-            }, 1000) // Update every second
-        }
-    }
 
     private fun initVariables() {
         mainViewModel = ViewModelProvider(this)[MainViewModel::class.java]
@@ -89,12 +59,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initThis() {
+        mainViewModel.checkSharedPrefAndSetMusicValue()
+
         if (!MusicPlayerService.isServiceRunning) {
             isPlaying.value = false
+            serviceIntent.action = Constants.ACTION.INIT_MUSIC
+            startService(serviceIntent)
         } else {
             isPlaying.value = MusicPlayerService.isMusicPlaying()
         }
-        mainViewModel.checkSharedPrefAndSetMusicValue()
 
         audio.observe(this) {
             setAudioFileDetails(audio.value!!)
@@ -104,6 +77,24 @@ class MainActivity : AppCompatActivity() {
                 binding.playImg.setImageResource(R.drawable.baseline_pause_24)
             } else {
                 binding.playImg.setImageResource(R.drawable.baseline_play_arrow_24)
+            }
+        }
+        initSeekValue.observe(this) {
+            initSeekListener()
+        }
+        buttonClick.observe(this) {
+            when (it) {
+                1 -> {
+                    prevClicked()
+                }
+
+                2 -> {
+                    playClicked()
+                }
+
+                3 -> {
+                    nextClicked()
+                }
             }
         }
     }
@@ -175,40 +166,56 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun playClicked() {
-        if (MusicPlayerService.isServiceRunning) {
-            if (isPlaying.value == true) {
-                isPlaying.value = false
-                serviceIntent.action = Constants.ACTION.PAUSE_MUSIC
-                startService(serviceIntent)
-            } else {
-                isPlaying.value = true
-                serviceIntent.action = Constants.ACTION.PLAY_MUSIC
-                startService(serviceIntent)
-            }
+        if (isPlaying.value == true) {
+            isPlaying.value = false
+            serviceIntent.action = Constants.ACTION.PAUSE_MUSIC
+            startService(serviceIntent)
         } else {
             isPlaying.value = true
-            serviceIntent.action = Constants.ACTION.START_FOREGROUND_ACTION
+            serviceIntent.action = Constants.ACTION.PLAY_MUSIC
             startService(serviceIntent)
-
+            updateSeekBar()
         }
     }
 
     fun prevOrNextClick() {
-        if (MusicPlayerService.isServiceRunning) {
-            if (isPlaying.value == true) {
-                isPlaying.value = false
-                serviceIntent.action = Constants.ACTION.STOP_MUSIC
-                startService(serviceIntent)
-            }
-            isPlaying.value = true
-            serviceIntent.action = Constants.ACTION.PLAY_MUSIC
-            startService(serviceIntent)
-        } else {
-            isPlaying.value = true
-            serviceIntent.action = Constants.ACTION.START_FOREGROUND_ACTION
-            startService(serviceIntent)
-        }
+        isPlaying.value = true
+        serviceIntent.action = Constants.ACTION.CHANGE_MUSIC
+        startService(serviceIntent)
         mainViewModel.saveShared()
+    }
+
+    private fun initSeekListener() {
+        binding.seekbar.max = mediaPlayer.duration
+        binding.endTimeText.text = mainViewModel.formatTime(mediaPlayer.duration)
+
+        binding.seekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    mediaPlayer.seekTo(progress)
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                mediaPlayer.pause()
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                mediaPlayer.start()
+            }
+        })
+    }
+
+    private fun updateSeekBar() {
+        binding.seekbar.max = mediaPlayer.duration
+        binding.seekbar.setProgress(mediaPlayer.currentPosition, true)
+        //if (mediaPlayer.isPlaying) {
+            handler.postDelayed({
+                updateSeekBar()
+                binding.currentTimeText.text = mainViewModel.formatTime(mediaPlayer.currentPosition)
+                binding.endTimeText.text = mainViewModel.formatTime(mediaPlayer.duration)
+            }, 1000) // Update every second
+       // }
     }
 
     override fun onDestroy() {
