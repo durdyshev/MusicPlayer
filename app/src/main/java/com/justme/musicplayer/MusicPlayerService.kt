@@ -26,7 +26,7 @@ class MusicPlayerService : Service() {
     companion object {
         var isServiceRunning = false // Tracks if the service is running
         private const val NOTIFICATION_ID = 1
-        private lateinit var mediaPlayer: MediaPlayer
+        lateinit var mediaPlayer: MediaPlayer
 
         fun isMusicPlaying(): Boolean {
             return if (::mediaPlayer.isInitialized) {
@@ -34,6 +34,9 @@ class MusicPlayerService : Service() {
             } else {
                 false
             }
+        }
+        fun isInit(): Boolean {
+            return ::mediaPlayer.isInitialized
         }
     }
 

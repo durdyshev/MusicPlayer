@@ -3,6 +3,8 @@ package com.justme.musicplayer
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModelProvider
@@ -10,10 +12,9 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 import com.bumptech.glide.Glide
 import com.google.android.material.tabs.TabLayoutMediator
+import com.justme.musicplayer.MusicPlayerService.Companion.mediaPlayer
 import com.justme.musicplayer.databinding.ActivityMainBinding
-import com.justme.musicplayer.use_cases.DecreaseAudioPosition
 import com.justme.musicplayer.use_cases.DecreaseAudioPosition.decreaseAudioPosition
-import com.justme.musicplayer.use_cases.IncreaseAudioPosition
 import com.justme.musicplayer.use_cases.IncreaseAudioPosition.increaseAudioPosition
 
 
@@ -22,6 +23,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: FragmentStateAdapter
     private lateinit var binding: ActivityMainBinding
     lateinit var mainViewModel: MainViewModel
+    private var handler = Handler()
 
     private val foldersArray = arrayOf(
         "Tracks",
@@ -44,6 +46,40 @@ class MainActivity : AppCompatActivity() {
         initTabLayout()
         initThis()
         initClickListeners()
+        initSeekListener()
+    }
+
+    private fun initSeekListener() {
+        if (MusicPlayerService.isInit()) {
+            binding.seekbar.max = mediaPlayer.duration
+        }
+        binding.seekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    mediaPlayer.seekTo(progress)
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                mediaPlayer.pause()
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                mediaPlayer.start()
+            }
+        })
+    }
+
+    private fun updateSeekBar() {
+        binding.seekbar.max = mediaPlayer.duration
+        binding.seekbar.setProgress(mediaPlayer.currentPosition, true)
+        if (mediaPlayer.isPlaying) {
+            handler.postDelayed({
+                updateSeekBar()
+                binding.currentTimeText.text = mainViewModel.formatTime(mediaPlayer.currentPosition)
+                binding.endTimeText.text = mainViewModel.formatTime(mediaPlayer.duration)
+            }, 1000) // Update every second
+        }
     }
 
     private fun initVariables() {
@@ -129,11 +165,13 @@ class MainActivity : AppCompatActivity() {
     private fun nextClicked() {
         increaseAudioPosition()
         prevOrNextClick()
+        updateSeekBar()
     }
 
     private fun prevClicked() {
         decreaseAudioPosition()
         prevOrNextClick()
+        updateSeekBar()
     }
 
     private fun playClicked() {
@@ -172,4 +210,10 @@ class MainActivity : AppCompatActivity() {
         }
         mainViewModel.saveShared()
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacksAndMessages(null)
+    }
+
 }

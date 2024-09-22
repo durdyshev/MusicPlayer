@@ -83,9 +83,9 @@
         android:id="@+id/prev_img"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
         android:layout_weight="1"
         android:padding="12dp"
-        android:layout_marginEnd="16dp"
         android:src="@drawable/baseline_skip_previous_24"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/play_img"
@@ -136,4 +136,39 @@
         app:layout_constraintEnd_toEndOf="@+id/next_img"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/pager" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/current_time_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:ellipsize="end"
+        android:gravity="start|center_vertical|center"
+        android:lines="1"
+        android:maxLines="1"
+        android:text="00:00"
+        android:textAlignment="center"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/prev_img"
+        app:layout_constraintStart_toEndOf="@+id/track_recycler_item_imageview"
+        app:layout_constraintTop_toTopOf="@+id/constraintLayout" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/end_time_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:ellipsize="end"
+        android:gravity="start|center_vertical|center"
+        android:lines="1"
+        android:maxLines="1"
+        android:text="00:00"
+        android:textAlignment="center"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/prev_img"
+        app:layout_constraintStart_toEndOf="@+id/track_recycler_item_imageview"
+        app:layout_constraintTop_toTopOf="@+id/constraintLayout" />
+
 </androidx.constraintlayout.motion.widget.MotionLayout>
