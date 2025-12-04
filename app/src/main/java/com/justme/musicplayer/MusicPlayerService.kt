@@ -4,7 +4,10 @@ import android.Manifest
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.media.AudioAttributes
@@ -13,6 +16,7 @@ import android.media.MediaPlayer
 import android.os.Binder
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -22,11 +26,20 @@ class MusicPlayerService : Service() {
 
     private lateinit var builder: NotificationCompat.Builder
     private lateinit var mediaSession: MediaSessionCompat
-    private var playbackPosition: Int = 0 // Track the last known position
-    private var isMediaPlayerInitialized: Boolean = false // Track if mediaPlayer is initialized
+    private var playbackPosition: Int = 0
+    private var isMediaPlayerInitialized: Boolean = false
+
+    private val noisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+                // Pause when headphones / audio output becomes noisy (including bluetooth disconnect)
+                MainActivity.buttonClick.postValue(2)
+            }
+        }
+    }
 
     companion object {
-        var isServiceRunning = false // Tracks if the service is running
+        var isServiceRunning = false
         private const val NOTIFICATION_ID = 1
         lateinit var mediaPlayer: MediaPlayer
 
@@ -45,19 +58,34 @@ class MusicPlayerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        isServiceRunning = true // Set when service starts
+        isServiceRunning = true
+        registerReceiver(noisyReceiver, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        isServiceRunning = false // Set when service stops
+        isServiceRunning = false
+        try {
+            unregisterReceiver(noisyReceiver)
+        } catch (e: Exception) {
+            // ignore
+        }
         if (MainActivity.isPlaying.value == true) {
             stopMusic()
         }
+        if (::mediaSession.isInitialized) {
+            mediaSession.release()
+        }
     }
 
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        when (intent.action) {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Let MediaButtonReceiver handle media button intents from bluetooth/headset
+        if (intent?.action == Intent.ACTION_MEDIA_BUTTON) {
+            MediaButtonReceiver.handleIntent(mediaSession, intent)
+            return START_NOT_STICKY
+        }
+
+        when (intent?.action) {
             Constants.ACTION.INIT_MUSIC -> {
                 startForeground(NOTIFICATION_ID, createNotification())
                 initMusic()
@@ -76,9 +104,9 @@ class MusicPlayerService : Service() {
             }
 
             Constants.ACTION.PLAY_MUSIC -> {
-                if (mediaPlayer.isPlaying) {
+                if (isMediaPlayerInitialized && mediaPlayer.isPlaying) {
                     MainActivity.isPlaying.value = false
-                    pauseMusic() // Pauses and saves the playback position
+                    pauseMusic()
                 } else {
                     MainActivity.isPlaying.value = true
                     continuePlay()
@@ -97,20 +125,22 @@ class MusicPlayerService : Service() {
 
             Constants.ACTION.PAUSE_MUSIC -> {
                 MainActivity.isPlaying.value = false
-                pauseMusic() // Pauses and saves the playback position
+                pauseMusic()
             }
         }
         return START_NOT_STICKY
     }
 
     private fun changeMusic() {
-        if (mediaPlayer.isPlaying) {
+        if (isMediaPlayerInitialized && mediaPlayer.isPlaying) {
             mediaPlayer.stop()
         }
         mediaPlayer.reset()
         mediaPlayer.setDataSource(application, MainActivity.audio.value!!.uri)
         mediaPlayer.prepare()
         mediaPlayer.start()
+        isMediaPlayerInitialized = true
+        updatePlaybackState()
         updateNotification()
     }
 
@@ -125,15 +155,17 @@ class MusicPlayerService : Service() {
                         .build()
                 )
                 prepare()
-                isMediaPlayerInitialized = true // Mark mediaPlayer as initialized
+                isMediaPlayerInitialized = true
                 setOnPreparedListener {
                     MainActivity.initSeekValue.postValue(true)
+                    updatePlaybackState()
                 }
                 setOnCompletionListener {
                     MainActivity.buttonClick.postValue(3)
                 }
                 requestAudioFocus()
             }
+            updatePlaybackState()
             updateNotification()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -142,8 +174,9 @@ class MusicPlayerService : Service() {
 
     private fun continuePlay() {
         if (isMediaPlayerInitialized && !mediaPlayer.isPlaying) {
-            mediaPlayer.seekTo(playbackPosition) // Resume from saved position
-            mediaPlayer.start() // Start or resume playback
+            mediaPlayer.seekTo(playbackPosition)
+            mediaPlayer.start()
+            updatePlaybackState()
             updateNotification()
         }
     }
@@ -158,11 +191,18 @@ class MusicPlayerService : Service() {
     }
 
     private fun createNotification(): Notification {
-        mediaSession = MediaSessionCompat(this, "PlayerAudio")
+        mediaSession = MediaSessionCompat(this, "MusicService")
         mediaSession.setFlags(
             MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
                     MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
         )
+        // Provide a media button pending intent so bluetooth/headset buttons are routed here
+        val mediaButtonPendingIntent = MediaButtonReceiver.buildMediaButtonPendingIntent(
+            this,
+            PlaybackStateCompat.ACTION_PLAY_PAUSE
+        )
+        mediaSession.setMediaButtonReceiver(mediaButtonPendingIntent)
+
         mediaSession.setCallback(object : MediaSessionCompat.Callback() {
             override fun onPlay() {
                 super.onPlay()
@@ -189,8 +229,14 @@ class MusicPlayerService : Service() {
                 super.onStop()
                 stopMusic()
             }
+
+            override fun onMediaButtonEvent(mediaButtonIntent: Intent?): Boolean {
+                // Let MediaButtonReceiver handle and route to callbacks
+                return super.onMediaButtonEvent(mediaButtonIntent)
+            }
         })
         mediaSession.isActive = true
+
         val prevIntent = Intent(this, NotificationReceiver::class.java)
         prevIntent.action = "com.example.musicplayer.action.PREV_MUSIC"
         val playIntent = Intent(this, NotificationReceiver::class.java)
@@ -243,6 +289,8 @@ class MusicPlayerService : Service() {
                 prepare()
                 start()
             }
+            isMediaPlayerInitialized = true
+            updatePlaybackState()
             updateNotification()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -251,25 +299,32 @@ class MusicPlayerService : Service() {
 
     private fun pauseMusic() {
         if (isMediaPlayerInitialized && mediaPlayer.isPlaying) {
-            playbackPosition = mediaPlayer.currentPosition // Save the current position
-            mediaPlayer.pause() // Pauses the media and remembers the current position
+            playbackPosition = mediaPlayer.currentPosition
+            mediaPlayer.pause()
+            updatePlaybackState()
             updateNotification()
         }
     }
 
     private fun stopMusic() {
-        if (isMediaPlayerInitialized && mediaPlayer.isPlaying) {
-            mediaPlayer.stop()
-            mediaPlayer.release()
-            isMediaPlayerInitialized = false // Mark mediaPlayer as uninitialized
-            updateNotification()
+        if (isMediaPlayerInitialized) {
+            try {
+                if (mediaPlayer.isPlaying) mediaPlayer.stop()
+            } catch (e: Exception) {
+                // ignore
+            } finally {
+                mediaPlayer.release()
+                isMediaPlayerInitialized = false
+                updatePlaybackState()
+                updateNotification()
+            }
         }
     }
 
     private fun updateNotification() {
-        val playText = if (MainActivity.isPlaying.value!!) "Pause" else "Play"
+        val playText = if (MainActivity.isPlaying.value == true) "Pause" else "Play"
         val playPauseResource =
-            if (MainActivity.isPlaying.value!!) R.drawable.baseline_pause_24 else R.drawable.baseline_play_arrow_24
+            if (MainActivity.isPlaying.value == true) R.drawable.baseline_pause_24 else R.drawable.baseline_play_arrow_24
         val prevIntent = Intent(this, NotificationReceiver::class.java)
         prevIntent.action = "com.example.musicplayer.action.PREV_MUSIC"
         val playIntent = Intent(this, NotificationReceiver::class.java)
@@ -280,19 +335,19 @@ class MusicPlayerService : Service() {
             applicationContext,
             0,
             prevIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT // setting the mutability flag
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val pendingPlayIntent = PendingIntent.getBroadcast(
             applicationContext,
             0,
             playIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT // setting the mutability flag
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val pendingNextIntent = PendingIntent.getBroadcast(
             applicationContext,
             0,
             nextIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT // setting the mutability flag
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         builder
             .clearActions()
@@ -315,14 +370,35 @@ class MusicPlayerService : Service() {
         }
     }
 
+    private fun updatePlaybackState() {
+        if (!::mediaSession.isInitialized) return
+        val actions = (PlaybackStateCompat.ACTION_PLAY
+                or PlaybackStateCompat.ACTION_PAUSE
+                or PlaybackStateCompat.ACTION_PLAY_PAUSE
+                or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+                or PlaybackStateCompat.ACTION_STOP)
+        val state = if (MainActivity.isPlaying.value == true) {
+            PlaybackStateCompat.Builder()
+                .setActions(actions)
+                .setState(PlaybackStateCompat.STATE_PLAYING, playbackPosition.toLong(), 1.0f)
+                .build()
+        } else {
+            PlaybackStateCompat.Builder()
+                .setActions(actions)
+                .setState(PlaybackStateCompat.STATE_PAUSED, playbackPosition.toLong(), 0f)
+                .build()
+        }
+        mediaSession.setPlaybackState(state)
+    }
+
     private fun requestAudioFocus() {
         val audioManager = getSystemService(AudioManager::class.java)
         val result = audioManager.requestAudioFocus(
             { focusChange ->
                 when (focusChange) {
                     AudioManager.AUDIOFOCUS_GAIN -> {
-                        if (mediaPlayer == null) initMusic()
-                        else if (!mediaPlayer.isPlaying) mediaPlayer.start()
+                        if (!mediaPlayer.isPlaying) mediaPlayer.start()
                     }
 
                     AudioManager.AUDIOFOCUS_LOSS -> stopMusic()
