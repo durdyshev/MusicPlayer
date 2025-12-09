@@ -1,4 +1,4 @@
-package com.justme.musicplayer;
+package com.justme.musicplayer.ui;
 
 import android.content.Context;
 import android.util.AttributeSet;
