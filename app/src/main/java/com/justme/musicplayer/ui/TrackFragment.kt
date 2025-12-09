@@ -1,17 +1,14 @@
-package com.justme.musicplayer
+package com.justme.musicplayer.ui
 
-import android.app.ActivityManager
-import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.content.getSystemService
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.justme.musicplayer.MainActivity
+import com.justme.musicplayer.adapters.TrackRecyclerViewAdapter
 import com.justme.musicplayer.databinding.FragmentTrackBinding
-
 
 class TrackFragment(private val mainActivity: MainActivity) : Fragment() {
     private lateinit var binding: FragmentTrackBinding
@@ -45,8 +42,8 @@ class TrackFragment(private val mainActivity: MainActivity) : Fragment() {
         binding.trackRecyclerview.adapter = trackRecyclerViewAdapter
 
         trackRecyclerViewAdapter.setOnClickItem { it, pos ->
-            MainActivity.audio.value = it
-            MainActivity.position.value = pos
+            MainActivity.Companion.audio.value = it
+            MainActivity.Companion.position.value = pos
             mainActivity.prevOrNextClick()
         }
     }

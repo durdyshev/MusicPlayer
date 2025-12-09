@@ -1,11 +1,11 @@
-package com.justme.musicplayer
+package com.justme.musicplayer.service
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.justme.musicplayer.MainActivity.Companion.isPlaying
-import com.justme.musicplayer.use_cases.DecreaseAudioPosition.decreaseAudioPosition
-import com.justme.musicplayer.use_cases.IncreaseAudioPosition.increaseAudioPosition
+import com.justme.musicplayer.MusicPlayerService
+import com.justme.musicplayer.MainActivity
+import com.justme.musicplayer.utils.MusicSharedPref
 
 class NotificationReceiver : BroadcastReceiver() {
     private lateinit var context: Context
@@ -19,15 +19,15 @@ class NotificationReceiver : BroadcastReceiver() {
         if (p1?.action != null) {
             when (p1.action) {
                 "com.example.musicplayer.action.PREV_MUSIC" -> {
-                    MainActivity.buttonClick.postValue(1)
+                    MainActivity.Companion.buttonClick.postValue(1)
                 }
 
                 "com.example.musicplayer.action.PAUSE_MUSIC" -> {
-                    MainActivity.buttonClick.postValue(2)
+                    MainActivity.Companion.buttonClick.postValue(2)
                 }
 
                 "com.example.musicplayer.action.NEXT_MUSIC" -> {
-                  MainActivity.buttonClick.postValue(3)
+                  MainActivity.Companion.buttonClick.postValue(3)
                 }
             }
         }

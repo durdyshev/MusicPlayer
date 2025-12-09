@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
@@ -14,8 +15,13 @@ import com.bumptech.glide.Glide
 import com.google.android.material.tabs.TabLayoutMediator
 import com.justme.musicplayer.MusicPlayerService.Companion.mediaPlayer
 import com.justme.musicplayer.databinding.ActivityMainBinding
+import com.justme.musicplayer.model.Audio
+import com.justme.musicplayer.model.Bucket
+import com.justme.musicplayer.ui.TabLayoutAdapter
 import com.justme.musicplayer.use_cases.DecreaseAudioPosition.decreaseAudioPosition
 import com.justme.musicplayer.use_cases.IncreaseAudioPosition.increaseAudioPosition
+import com.justme.musicplayer.utils.Constants
+import com.justme.musicplayer.viewmodel.MainViewModel
 
 
 class MainActivity : AppCompatActivity() {
@@ -23,7 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: FragmentStateAdapter
     private lateinit var binding: ActivityMainBinding
     lateinit var mainViewModel: MainViewModel
-    private var handler = Handler()
+    private val handler = Handler(Looper.getMainLooper())
 
     private val foldersArray = arrayOf(
         "Tracks",
@@ -101,6 +107,9 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("ResourceAsColor")
     private fun initTabLayout() {
+        binding.tabLayout.post {
+            binding.tabLayout.requestLayout()
+        }
         adapter = TabLayoutAdapter(supportFragmentManager, lifecycle, this)
         binding.pager.adapter = adapter
         binding.tabLayout.setBackgroundColor(android.R.color.transparent)

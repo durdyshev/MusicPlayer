@@ -1,9 +1,10 @@
-package com.justme.musicplayer
+package com.justme.musicplayer.ui
 
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.viewpager2.adapter.FragmentStateAdapter
+import com.justme.musicplayer.MainActivity
 
 private const val NUM_TABS = 2
 

@@ -42,7 +42,7 @@
         <service
             android:name="com.justme.musicplayer.MusicPlayerService"
             android:enabled="true" />
-        <receiver android:name=".NotificationReceiver"
+        <receiver android:name=".service.NotificationReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
