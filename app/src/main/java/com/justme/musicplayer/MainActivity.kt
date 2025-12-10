@@ -22,14 +22,18 @@ import com.justme.musicplayer.use_cases.DecreaseAudioPosition.decreaseAudioPosit
 import com.justme.musicplayer.use_cases.IncreaseAudioPosition.increaseAudioPosition
 import com.justme.musicplayer.utils.Constants
 import com.justme.musicplayer.viewmodel.MainViewModel
-
+import android.content.pm.PackageManager
+import android.os.Build
 
 class MainActivity : AppCompatActivity() {
+
     private lateinit var serviceIntent: Intent
     private lateinit var adapter: FragmentStateAdapter
     private lateinit var binding: ActivityMainBinding
     lateinit var mainViewModel: MainViewModel
     private val handler = Handler(Looper.getMainLooper())
+
+    private var permissionGranted = false
 
     private val foldersArray = arrayOf(
         "Tracks",
@@ -44,13 +48,70 @@ class MainActivity : AppCompatActivity() {
         lateinit var audioList: ArrayList<Audio>
         var initSeekValue = MutableLiveData<Boolean>()
         var buttonClick = MutableLiveData<Int>()
-
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        requestAudioPermission()   // PERMISSION FIRST
+    }
+
+    // -------------------------------------------------------------
+    //   PERMISSION SYSTEM
+    // -------------------------------------------------------------
+    private fun requestAudioPermission() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+
+            if (checkSelfPermission(android.Manifest.permission.READ_MEDIA_AUDIO)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(
+                    arrayOf(android.Manifest.permission.READ_MEDIA_AUDIO),
+                    100
+                )
+            } else {
+                permissionGranted = true
+                startAppInit()
+            }
+
+        } else {
+            // Android 12-
+            if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(
+                    arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE),
+                    100
+                )
+            } else {
+                permissionGranted = true
+                startAppInit()
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == 100 && grantResults.isNotEmpty()
+            && grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionGranted = true
+            startAppInit()
+        }
+    }
+
+    // -------------------------------------------------------------
+    //   START REAL APP INITIALIZATION
+    // -------------------------------------------------------------
+    private fun startAppInit() {
         initVariables()
         initTabLayout()
         initThis()
@@ -78,6 +139,7 @@ class MainActivity : AppCompatActivity() {
         audio.observe(this) {
             setAudioFileDetails(audio.value!!)
         }
+
         isPlaying.observe(this) {
             if (isPlaying.value == true) {
                 binding.playImg.setImageResource(R.drawable.baseline_pause_24)
@@ -85,31 +147,24 @@ class MainActivity : AppCompatActivity() {
                 binding.playImg.setImageResource(R.drawable.baseline_play_arrow_24)
             }
         }
+
         initSeekValue.observe(this) {
             initSeekListener()
         }
+
         buttonClick.observe(this) {
             when (it) {
-                1 -> {
-                    prevClicked()
-                }
-
-                2 -> {
-                    playClicked()
-                }
-
-                3 -> {
-                    nextClicked()
-                }
+                1 -> prevClicked()
+                2 -> playClicked()
+                3 -> nextClicked()
             }
         }
     }
 
     @SuppressLint("ResourceAsColor")
     private fun initTabLayout() {
-        binding.tabLayout.post {
-            binding.tabLayout.requestLayout()
-        }
+        binding.tabLayout.post { binding.tabLayout.requestLayout() }
+
         adapter = TabLayoutAdapter(supportFragmentManager, lifecycle, this)
         binding.pager.adapter = adapter
         binding.tabLayout.setBackgroundColor(android.R.color.transparent)
@@ -117,48 +172,45 @@ class MainActivity : AppCompatActivity() {
         TabLayoutMediator(binding.tabLayout, binding.pager) { tab, position ->
             tab.text = foldersArray[position]
         }.attach()
+
         binding.pager.registerOnPageChangeCallback(object : OnPageChangeCallback() {})
     }
 
     private fun initClickListeners() {
-        binding.prevImg.setOnClickListener {
-            prevClicked()
-        }
-        binding.playImg.setOnClickListener {
-            playClicked()
-        }
-        binding.nextImg.setOnClickListener {
-            nextClicked()
-        }
+        binding.prevImg.setOnClickListener { prevClicked() }
+        binding.playImg.setOnClickListener { playClicked() }
+        binding.nextImg.setOnClickListener { nextClicked() }
     }
-
 
     private fun setAudioFileDetails(audio: Audio) {
         val image = mainViewModel.imgSource(audio.data)
         binding.trackRecyclerItemText.text = audio.name
 
         if (image != null) {
-            Glide.with(binding.trackRecyclerItemImageview).asBitmap() //2
-                .load(image) //3
-                .centerCrop() //4
-                .placeholder(R.drawable.track_drawable) //5
-                .into(binding.trackRecyclerItemImageview) //8
+            Glide.with(binding.trackRecyclerItemImageview)
+                .asBitmap()
+                .load(image)
+                .centerCrop()
+                .placeholder(R.drawable.track_drawable)
+                .into(binding.trackRecyclerItemImageview)
         } else {
-            Glide.with(binding.trackRecyclerItemImageview).asBitmap() //2
-                .load(R.drawable.baseline_music_note_24) //3
-                .centerCrop() //4
-                .placeholder(R.drawable.track_drawable) //5
-                .into(binding.trackRecyclerItemImageview) //8
+            Glide.with(binding.trackRecyclerItemImageview)
+                .asBitmap()
+                .load(R.drawable.baseline_music_note_24)
+                .centerCrop()
+                .placeholder(R.drawable.track_drawable)
+                .into(binding.trackRecyclerItemImageview)
         }
     }
-
 
     fun getAudioList(): ArrayList<Audio> {
         return audioList
     }
 
     override fun onResume() {
-        mainViewModel.checkSharedPrefAndSetMusicValue()
+        if (permissionGranted) {
+            mainViewModel.checkSharedPrefAndSetMusicValue()
+        }
         super.onResume()
     }
 
@@ -200,9 +252,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.seekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    mediaPlayer.seekTo(progress)
-                }
+                if (fromUser) mediaPlayer.seekTo(progress)
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
@@ -218,18 +268,16 @@ class MainActivity : AppCompatActivity() {
     private fun updateSeekBar() {
         binding.seekbar.max = mediaPlayer.duration
         binding.seekbar.setProgress(mediaPlayer.currentPosition, true)
-        //if (mediaPlayer.isPlaying) {
-            handler.postDelayed({
-                updateSeekBar()
-                binding.currentTimeText.text = mainViewModel.formatTime(mediaPlayer.currentPosition)
-                binding.endTimeText.text = mainViewModel.formatTime(mediaPlayer.duration)
-            }, 1000) // Update every second
-       // }
+
+        handler.postDelayed({
+            updateSeekBar()
+            binding.currentTimeText.text = mainViewModel.formatTime(mediaPlayer.currentPosition)
+            binding.endTimeText.text = mainViewModel.formatTime(mediaPlayer.duration)
+        }, 1000)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacksAndMessages(null)
     }
-
 }
