@@ -8,4 +8,5 @@ data class Audio(
     val duration: Int,
     val size: Int,
     val data: String,
+    val artistName: String?="Unknown",
 )

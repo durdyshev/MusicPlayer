@@ -35,15 +35,16 @@ class TrackViewModel(private val application: Application) : AndroidViewModel(ap
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.SIZE,
             MediaStore.Audio.Media.DATA,
+            MediaStore.Audio.Media.ARTIST
         )
 
-        // Show only videos that are at least 5 minutes in duration.
+        // Show only audio that are at least 5 minutes in duration.
         val selection = "${MediaStore.Audio.Media.DURATION} >= ?"
         val selectionArgs = arrayOf(
             TimeUnit.MILLISECONDS.convert(5, TimeUnit.MINUTES).toString()
         )
 
-        // Display videos in alphabetical order based on their display name.
+        // Display audio in alphabetical order based on their display name.
         val sortOrder = "${MediaStore.Audio.Media.DISPLAY_NAME} ASC"
 
         val query = application.contentResolver.query(
@@ -61,25 +62,29 @@ class TrackViewModel(private val application: Application) : AndroidViewModel(ap
             val durationColumn =
                 cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
-            val data = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            val artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
 
             while (cursor.moveToNext()) {
-                // Get values of columns for a given video.
+                // Get values of columns for a given audio.
                 val id = cursor.getLong(idColumn)
                 val name = cursor.getString(nameColumn)
                 val duration = cursor.getInt(durationColumn)
                 val size = cursor.getInt(sizeColumn)
-                val data = cursor.getString(data)
+                val data = cursor.getString(dataColumn)
+                val artist = cursor.getString(artistColumn) ?: "Unknown"
 
                 val contentUri: Uri = ContentUris.withAppendedId(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                     id
                 )
 
+                // Log artist (author)
+                Log.d("TrackViewModel", "Artist: $artist")
 
                 // Stores column values and the contentUri in a local object
                 // that represents the media file.
-                audioList1 += Audio(contentUri, name, duration, size, data)
+                audioList1 += Audio(contentUri, name, duration, size, data, artist)
 
                 val photoUri = data
                 val photoFolderPath = File(photoUri).parent!!
@@ -91,8 +96,6 @@ class TrackViewModel(private val application: Application) : AndroidViewModel(ap
                     directories.add(File(photoUri).parent!!)
                     directories1.add(bucket)
                 }
-
-
             }
             for (hey in directories1) {
                 Log.e("directory", hey.folderName)

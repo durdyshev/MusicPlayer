@@ -19,15 +19,15 @@ class NotificationReceiver : BroadcastReceiver() {
         if (p1?.action != null) {
             when (p1.action) {
                 "com.example.musicplayer.action.PREV_MUSIC" -> {
-                    MainActivity.Companion.buttonClick.postValue(1)
+                    MainActivity.buttonClick.postValue(1)
                 }
 
                 "com.example.musicplayer.action.PAUSE_MUSIC" -> {
-                    MainActivity.Companion.buttonClick.postValue(2)
+                    MainActivity.buttonClick.postValue(2)
                 }
 
                 "com.example.musicplayer.action.NEXT_MUSIC" -> {
-                  MainActivity.Companion.buttonClick.postValue(3)
+                  MainActivity.buttonClick.postValue(3)
                 }
             }
         }

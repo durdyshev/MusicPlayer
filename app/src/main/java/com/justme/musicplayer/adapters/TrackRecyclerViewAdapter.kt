@@ -44,30 +44,33 @@ class TrackRecyclerViewAdapter(
 
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tv: TextView = itemView.findViewById(R.id.track_recycler_item_text)
+        private val authorTv: TextView = itemView.findViewById(R.id.track_recycler_item_author)
         private val imageView: ImageView = itemView.findViewById(R.id.track_recycler_item_imageview)
-
+        val radiusDp = 8
+        val radiusPx = (radiusDp * itemView.resources.displayMetrics.density).toInt()
         fun bindView(audio: Audio) {
             if (audio.name.length > 20) {
                 tv.text = audio.name.substring(0, 21) + "..."
             } else {
                 tv.text = audio.name
             }
+            authorTv.text = audio.artistName ?: "Unknown"
             CoroutineScope(Dispatchers.IO).launch {
                 val image = imgSource(audio.data)
                 withContext(Dispatchers.Main) {
-                    if (image != null) {
-                        Glide.with(itemView).asBitmap() //2
-                            .load(image) //3
-                            .centerCrop() //4
-                            .placeholder(R.drawable.track_drawable) //5
-                            .into(imageView) //8
+                    val glideRequest = if (image != null) {
+                        Glide.with(itemView).asBitmap().load(image)
                     } else {
-                        Glide.with(itemView).asBitmap() //2
-                            .load(R.drawable.baseline_music_note_24) //3
-                            .centerCrop() //4
-                            .placeholder(R.drawable.track_drawable) //5
-                            .into(imageView) //8
+                        Glide.with(itemView).asBitmap().load(R.drawable.baseline_music_note_24)
                     }
+
+                    glideRequest
+                        .placeholder(R.drawable.track_drawable)
+                        .transform(
+                            com.bumptech.glide.load.resource.bitmap.CenterCrop(),
+                            com.bumptech.glide.load.resource.bitmap.RoundedCorners(radiusPx)
+                        )
+                        .into(imageView)
                 }
             }
 

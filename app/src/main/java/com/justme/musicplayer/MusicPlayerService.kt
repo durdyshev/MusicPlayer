@@ -9,10 +9,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.AudioManager
+import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
@@ -260,7 +263,7 @@ class MusicPlayerService : Service() {
         )
 
         builder = NotificationCompat.Builder(this, Constants.NOTIFICATION_CHANNEL_ID)
-            .setLargeIcon(BitmapFactory.decodeFile(MainActivity.audio.value!!.data))
+            .setLargeIcon(getAlbumArtBitmap(MainActivity.audio.value!!.data))
             .setContentTitle(MainActivity.audio.value!!.name)
             .setContentText(MainActivity.audio.value!!.name)
             .addAction(R.drawable.baseline_skip_previous_24, "Previous", pendingPrevIntent)
@@ -276,6 +279,31 @@ class MusicPlayerService : Service() {
             .setWhen(0)
 
         return builder.build()
+    }
+    private fun getAlbumArtBitmap(path: String?): Bitmap? {
+        if (path.isNullOrEmpty()) return null
+        val retriever = MediaMetadataRetriever()
+        return try {
+            val uri = Uri.parse(path)
+            // If the path has a scheme (content://, file://, etc.) use the context + Uri overload,
+            // otherwise pass the raw file path string.
+            if (uri.scheme != null) {
+                retriever.setDataSource(applicationContext, uri)
+            } else {
+                retriever.setDataSource(path)
+            }
+            val art = retriever.embeddedPicture
+            art?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+        } catch (e: Exception) {
+            // Fallback to decoding file if retriever fails (covers plain file paths)
+            try {
+                BitmapFactory.decodeFile(path)
+            } catch (ignored: Exception) {
+                null
+            }
+        } finally {
+            try { retriever.release() } catch (_: Exception) {}
+        }
     }
 
     private fun playMusicFirst() {

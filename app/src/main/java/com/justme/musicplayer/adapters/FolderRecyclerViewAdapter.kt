@@ -45,7 +45,7 @@ class FolderRecyclerViewAdapter(
 
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tv: TextView = itemView.findViewById(R.id.track_recycler_item_text)
-        private val tv2: TextView = itemView.findViewById(R.id.track_recycler_item_text2)
+        private val tv2: TextView = itemView.findViewById(R.id.track_recycler_item_author)
         private val imageView: ImageView = itemView.findViewById(R.id.track_recycler_item_imageview)
 
         fun bindView(folder: Bucket) {
