@@ -41,7 +41,6 @@ class MainActivity : AppCompatActivity() {
     )
 
     companion object {
-        lateinit var directoryList: ArrayList<Bucket>
         var audio = MutableLiveData<Audio>()
         var position = MutableLiveData<Int>()
         var isPlaying = MutableLiveData<Boolean>()
@@ -54,13 +53,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         requestAudioPermission()   // PERMISSION FIRST
     }
 
-    // -------------------------------------------------------------
-    //   PERMISSION SYSTEM
-    // -------------------------------------------------------------
     private fun requestAudioPermission() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -108,9 +103,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // -------------------------------------------------------------
-    //   START REAL APP INITIALIZATION
-    // -------------------------------------------------------------
     private fun startAppInit() {
         initVariables()
         initTabLayout()
@@ -210,6 +202,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         if (permissionGranted) {
             mainViewModel.checkSharedPrefAndSetMusicValue()
+            binding.tabLayout.post { binding.tabLayout.requestLayout() }
         }
         super.onResume()
     }
