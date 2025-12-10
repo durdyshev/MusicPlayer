@@ -25,9 +25,9 @@ The app supports background playback, notifications, headset controls, folder-ba
 ---
 
 <p float="left">
-  <img src="app/src/main/res/raw/justplayer_folder_fragment.jpg" width="300" style="margin: 50px;" />
-  <img src="app/src/main/res/raw/justplayer_track_fragment.jpg" width="300" style="margin: 50px;" />
-  <img src="app/src/main/res/raw/media_player.jpg" width="300" />
+  <img src="app/src/main/res/raw/justplayer_track_fragment.jpg" width="200" height:"200" style="margin: 50px;" />
+  <img src="app/src/main/res/raw/justplayer_folder_fragment.jpg" width="200" height:"200" style="margin: 50px;" />
+  <img src="app/src/main/res/raw/media_player.jpg" width="200" height:"200" />
 </p>
 
 ## 📱 Requirements
