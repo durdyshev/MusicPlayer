@@ -2,7 +2,6 @@ package com.justme.musicplayer.viewmodel
 
 import android.app.Application
 import android.content.ContentUris
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -10,17 +9,12 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import com.justme.musicplayer.model.Audio
 import com.justme.musicplayer.model.Bucket
-import com.justme.musicplayer.MainActivity.Companion.audio
-import com.justme.musicplayer.MainActivity.Companion.audioList
-import com.justme.musicplayer.MainActivity.Companion.position
-import com.justme.musicplayer.utils.MusicSharedPref
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-class MainViewModel(private val application: Application) : AndroidViewModel(application) {
+class TrackViewModel(private val application: Application) : AndroidViewModel(application) {
     private val directories: ArrayList<String> = ArrayList()
     private val directories1: ArrayList<Bucket> = ArrayList()
-    private val musicSharedPref = MusicSharedPref(application.applicationContext)
 
     fun getAllMusic(): ArrayList<Audio> {
 
@@ -107,41 +101,4 @@ class MainViewModel(private val application: Application) : AndroidViewModel(app
         }
         return audioList1
     }
-
-    fun imgSource(path: String): ByteArray? {
-        val retriever = MediaMetadataRetriever()
-        retriever.setDataSource(path)
-        val pic = retriever.embeddedPicture
-        retriever.release()
-        return pic
-    }
-
-
-    fun checkSharedPrefAndSetMusicValue() {
-        val musicPos = musicSharedPref.getMusicId()
-        val musicName = musicSharedPref.getMusicName()
-        if (musicPos == -1) {
-            position.value = 0
-            audio.value = audioList[0]
-        } else {
-            if (audioList[musicPos].name == musicName) {
-                position.value = musicPos
-                audio.value = audioList[position.value!!]
-            } else {
-                position.value = 0
-                audio.value = audioList[0]
-            }
-        }
-    }
-
-    fun saveShared() {
-        musicSharedPref.saveShared()
-    }
-
-    fun formatTime(milliseconds: Int): String {
-        val minutes = milliseconds / 1000 / 60
-        val seconds = milliseconds / 1000 % 60
-        return String.format("%02d:%02d", minutes, seconds)
-    }
-
 }
